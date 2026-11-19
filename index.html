@@ -208,139 +208,277 @@ tbody tr:hover{background:#fcfcfb}
 </div>
 <div class="toast" id="toast" role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (() => {
   'use strict';
-  const STORAGE_KEY = 'bibliotecaRicardoMora_v1';
-  const $ = id => document.getElementById(id);
-  let books = loadBooks();
-  let pendingDelete = null;
 
-  function loadBooks(){
-    try{
-      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      return Array.isArray(value) ? value : [];
-    }catch(e){ return []; }
+  // Configuración pública de Supabase. La publishable key está diseñada
+  // para usarse en el navegador; la seguridad se aplica mediante RLS.
+  const SUPABASE_URL = 'https://hwiseacnjhasfgosnleu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_tyk5RYr3otHZi0zcy0siCw_L1AiDkwm';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const $ = id => document.getElementById(id);
+  let books = [];
+  let pendingDelete = null;
+  let channel = null;
+
+  function safe(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
   }
-  function persist(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-      return true;
-    }catch(e){
-      toast('No se pudo guardar. Revisa el espacio disponible del navegador.');
-      return false;
+
+  function statusClass(status) {
+    return status === 'Disponible' ? 'available' :
+      status === 'En préstamo' ? 'loaned' : 'unavailable';
+  }
+
+  function statusPill(status) {
+    return `<span class="pill ${statusClass(status)}">${safe(status)}</span>`;
+  }
+
+  function toast(message) {
+    const el = $('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  function setBusy(busy) {
+    $('saveBtn').disabled = busy;
+    $('saveBtn').textContent = busy ? 'Guardando…' :
+      ($('bookId').value ? 'Guardar cambios' : 'Guardar ejemplar');
+  }
+
+  async function fetchBooks(showError = true) {
+    const { data, error } = await supabaseClient
+      .from('books')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase SELECT:', error);
+      if (showError) toast('No se pudo cargar el catálogo: ' + error.message);
+      return;
     }
+    books = data || [];
+    renderDashboard();
+    renderCatalog();
   }
-  function safe(value){
-    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-  function statusClass(status){
-    return status === 'Disponible' ? 'available' : status === 'En préstamo' ? 'loaned' : 'unavailable';
-  }
-  function statusPill(status){ return `<span class="pill ${statusClass(status)}">${safe(status)}</span>`; }
-  function toast(message){
-    const el=$('toast');el.textContent=message;el.classList.add('show');
-    clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2800);
-  }
-  function showView(name){
-    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name && (name!=='form'||b.dataset.view==='form')));
-    const labels={dashboard:'Resumen general',catalog:'Catálogo bibliográfico',form:'Nuevo ejemplar'};
-    $('crumb').textContent=labels[name]||'Biblioteca';
-    $('sidebar').classList.remove('open');
-    if(name==='catalog') renderCatalog();
-    if(name==='dashboard') renderDashboard();
-    window.scrollTo({top:0,behavior:'smooth'});
-  }
-  function renderDashboard(){
-    $('statTotal').textContent=books.length;
-    $('statAvailable').textContent=books.filter(b=>b.status==='Disponible').length;
-    $('statLoaned').textContent=books.filter(b=>b.status==='En préstamo').length;
-    $('statCategories').textContent=new Set(books.map(b=>b.category.trim().toLowerCase()).filter(Boolean)).size;
-    const recent=[...books].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
-    $('recentRows').innerHTML=recent.map(b=>`<tr><td><div class="book-title">${safe(b.title)}</div><div class="book-author">${safe(b.isbn||'Sin ISBN')}</div></td><td>${safe(b.author)}</td><td>${safe(b.category)}</td><td>${statusPill(b.status)}</td></tr>`).join('');
-    $('recentEmpty').style.display=recent.length?'none':'block';
-  }
-  function renderCatalog(){
-    const q=$('searchInput').value.trim().toLocaleLowerCase('es');
-    const cat=$('categoryFilter').value, status=$('statusFilter').value;
-    const filtered=books.filter(b=>{
-      const hay=[b.title,b.author,b.isbn,b.category,b.publisher,b.year,b.description].join(' ').toLocaleLowerCase('es');
-      return (!q||hay.includes(q))&&(!cat||b.category===cat)&&(!status||b.status===status);
-    }).sort((a,b)=>a.title.localeCompare(b.title,'es'));
-    $('catalogRows').innerHTML=filtered.map(b=>`
+
+  function renderDashboard() {
+    $('statTotal').textContent = books.length;
+    $('statAvailable').textContent = books.filter(b => b.status === 'Disponible').length;
+    $('statLoaned').textContent = books.filter(b => b.status === 'En préstamo').length;
+    $('statCategories').textContent = new Set(
+      books.map(b => (b.category || '').trim().toLocaleLowerCase('es')).filter(Boolean)
+    ).size;
+
+    const recent = [...books].slice(0, 5);
+    $('recentRows').innerHTML = recent.map(b => `
       <tr>
-        <td><div class="book-title">${safe(b.title)}</div><div class="isbn">${safe(b.isbn||'ISBN no registrado')}</div></td>
-        <td>${safe(b.author)}</td><td>${safe(b.category)}</td><td>${safe(b.year||'—')}</td><td>${statusPill(b.status)}</td>
-        <td><div class="actions"><button class="icon-btn" data-action="edit" data-id="${safe(b.id)}" title="Actualizar ficha" aria-label="Actualizar ficha">✎</button><button class="icon-btn delete" data-action="delete" data-id="${safe(b.id)}" title="Retirar registro" aria-label="Retirar registro">⌫</button></div></td>
+        <td><div class="book-title">${safe(b.title)}</div><div class="book-author">${safe(b.isbn || 'Sin ISBN')}</div></td>
+        <td>${safe(b.author)}</td>
+        <td>${safe(b.category)}</td>
+        <td>${statusPill(b.status)}</td>
       </tr>`).join('');
-    $('catalogEmpty').style.display=filtered.length?'none':'block';
-    $('catalogCount').textContent=`${filtered.length} ${filtered.length===1?'registro encontrado':'registros encontrados'}`;
-    $('resultLabel').textContent=`Mostrando ${filtered.length} de ${books.length} registros`;
-    const categories=[...new Set(books.map(b=>b.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
-    const current=$('categoryFilter').value;
-    $('categoryFilter').innerHTML='<option value="">Todas las categorías</option>'+categories.map(c=>`<option value="${safe(c)}">${safe(c)}</option>`).join('');
-    $('categoryFilter').value=categories.includes(current)?current:'';
+    $('recentEmpty').style.display = recent.length ? 'none' : 'block';
   }
-  function resetForm(){
-    $('bookForm').reset();$('bookId').value='';$('formTitle').textContent='Registrar nuevo ejemplar';$('saveBtn').textContent='Guardar ejemplar';
+
+  function renderCatalog() {
+    const q = $('searchInput').value.trim().toLocaleLowerCase('es');
+    const cat = $('categoryFilter').value;
+    const status = $('statusFilter').value;
+
+    const filtered = books.filter(b => {
+      const hay = [b.title,b.author,b.isbn,b.category,b.publisher,b.year,b.description]
+        .join(' ').toLocaleLowerCase('es');
+      return (!q || hay.includes(q)) && (!cat || b.category === cat) &&
+        (!status || b.status === status);
+    }).sort((a,b) => (a.title || '').localeCompare(b.title || '', 'es'));
+
+    $('catalogRows').innerHTML = filtered.map(b => `
+      <tr>
+        <td><div class="book-title">${safe(b.title)}</div><div class="isbn">${safe(b.isbn || 'ISBN no registrado')}</div></td>
+        <td>${safe(b.author)}</td>
+        <td>${safe(b.category)}</td>
+        <td>${safe(b.year || '—')}</td>
+        <td>${statusPill(b.status)}</td>
+        <td><div class="actions">
+          <button class="icon-btn" data-action="edit" data-id="${safe(b.id)}" title="Actualizar ficha" aria-label="Actualizar ficha">✎</button>
+          <button class="icon-btn delete" data-action="delete" data-id="${safe(b.id)}" title="Retirar registro" aria-label="Retirar registro">⌫</button>
+        </div></td>
+      </tr>`).join('');
+
+    $('catalogEmpty').style.display = filtered.length ? 'none' : 'block';
+    $('catalogCount').textContent = `${filtered.length} ${filtered.length === 1 ? 'registro encontrado' : 'registros encontrados'}`;
+    $('resultLabel').textContent = `Mostrando ${filtered.length} de ${books.length} registros`;
+
+    const categories = [...new Set(books.map(b => b.category).filter(Boolean))]
+      .sort((a,b) => a.localeCompare(b, 'es'));
+    const current = cat;
+    $('categoryFilter').innerHTML = '<option value="">Todas las categorías</option>' +
+      categories.map(c => `<option value="${safe(c)}">${safe(c)}</option>`).join('');
+    $('categoryFilter').value = categories.includes(current) ? current : '';
   }
-  function editBook(id){
-    const b=books.find(x=>x.id===id);if(!b)return;
-    $('bookId').value=b.id;$('title').value=b.title;$('author').value=b.author;$('isbn').value=b.isbn||'';
-    $('category').value=b.category;$('year').value=b.year||'';$('publisher').value=b.publisher||'';
-    $('status').value=b.status;$('description').value=b.description||'';
-    $('formTitle').textContent='Actualizar ficha bibliográfica';$('saveBtn').textContent='Guardar cambios';
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === name));
+    document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+    const labels = {dashboard:'Resumen general',catalog:'Catálogo bibliográfico',form:'Nuevo ejemplar'};
+    $('crumb').textContent = labels[name] || 'Biblioteca';
+    $('sidebar').classList.remove('open');
+    if (name === 'catalog') renderCatalog();
+    if (name === 'dashboard') renderDashboard();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function resetForm() {
+    $('bookForm').reset();
+    $('bookId').value = '';
+    $('formTitle').textContent = 'Registrar nuevo ejemplar';
+    $('saveBtn').textContent = 'Guardar ejemplar';
+  }
+
+  function editBook(id) {
+    const b = books.find(x => String(x.id) === String(id));
+    if (!b) return;
+    $('bookId').value = b.id;
+    $('title').value = b.title || '';
+    $('author').value = b.author || '';
+    $('isbn').value = b.isbn || '';
+    $('category').value = b.category || '';
+    $('year').value = b.year || '';
+    $('publisher').value = b.publisher || '';
+    $('status').value = b.status || 'Disponible';
+    $('description').value = b.description || '';
+    $('formTitle').textContent = 'Actualizar ficha bibliográfica';
+    $('saveBtn').textContent = 'Guardar cambios';
     showView('form');
   }
-  function openDelete(id){
-    const b=books.find(x=>x.id===id);if(!b)return;
-    pendingDelete=id;$('modalText').textContent=`¿Deseas retirar “${b.title}” del catálogo? Esta acción no se puede deshacer.`;
+
+  function openDelete(id) {
+    const b = books.find(x => String(x.id) === String(id));
+    if (!b) return;
+    pendingDelete = id;
+    $('modalText').textContent = `¿Deseas retirar “${b.title}” del catálogo? Esta acción no se puede deshacer.`;
     $('confirmModal').classList.add('open');
   }
-  function closeDelete(){pendingDelete=null;$('confirmModal').classList.remove('open');}
-  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
-  document.querySelectorAll('[data-go]').forEach(btn=>btn.addEventListener('click',()=>{
-    if(btn.dataset.go==='form')resetForm();showView(btn.dataset.go);
-  }));
-  $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
-  $('searchInput').addEventListener('input',renderCatalog);
-  $('categoryFilter').addEventListener('change',renderCatalog);
-  $('statusFilter').addEventListener('change',renderCatalog);
-  $('catalogRows').addEventListener('click',e=>{
-    const btn=e.target.closest('button[data-action]');if(!btn)return;
-    if(btn.dataset.action==='edit')editBook(btn.dataset.id);
-    if(btn.dataset.action==='delete')openDelete(btn.dataset.id);
+
+  function closeDelete() {
+    pendingDelete = null;
+    $('confirmModal').classList.remove('open');
+  }
+
+  document.querySelectorAll('[data-view]').forEach(btn =>
+    btn.addEventListener('click', () => showView(btn.dataset.view))
+  );
+
+  document.querySelectorAll('[data-go]').forEach(btn =>
+    btn.addEventListener('click', () => {
+      if (btn.dataset.go === 'form') resetForm();
+      showView(btn.dataset.go);
+    })
+  );
+
+  $('menuBtn').addEventListener('click', () => $('sidebar').classList.toggle('open'));
+  $('searchInput').addEventListener('input', renderCatalog);
+  $('categoryFilter').addEventListener('change', renderCatalog);
+  $('statusFilter').addEventListener('change', renderCatalog);
+
+  $('catalogRows').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    if (btn.dataset.action === 'edit') editBook(btn.dataset.id);
+    if (btn.dataset.action === 'delete') openDelete(btn.dataset.id);
   });
-  $('bookForm').addEventListener('submit',e=>{
+
+  $('bookForm').addEventListener('submit', async e => {
     e.preventDefault();
-    const id=$('bookId').value;
-    const title=$('title').value.trim(),author=$('author').value.trim(),category=$('category').value.trim();
-    if(!title||!author||!category){toast('Completa los campos obligatorios.');return;}
-    const year=$('year').value.trim();
-    if(year && (+year<0||+year>2100)){toast('Ingresa un año válido.');return;}
-    const record={
-      id:id||('book_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
-      title,author,isbn:$('isbn').value.trim(),category,year,publisher:$('publisher').value.trim(),
-      status:$('status').value,description:$('description').value.trim(),
-      createdAt:id?(books.find(b=>b.id===id)?.createdAt||Date.now()):Date.now(),
-      updatedAt:Date.now()
+    const id = $('bookId').value;
+    const title = $('title').value.trim();
+    const author = $('author').value.trim();
+    const category = $('category').value.trim();
+    const yearText = $('year').value.trim();
+
+    if (!title || !author || !category) {
+      toast('Completa los campos obligatorios.');
+      return;
+    }
+    if (yearText && (!Number.isInteger(Number(yearText)) || Number(yearText) < 0 || Number(yearText) > 2100)) {
+      toast('Ingresa un año válido.');
+      return;
+    }
+
+    const record = {
+      title,
+      author,
+      isbn: $('isbn').value.trim() || null,
+      category,
+      year: yearText ? Number(yearText) : null,
+      publisher: $('publisher').value.trim() || null,
+      status: $('status').value,
+      description: $('description').value.trim() || null,
+      updated_at: new Date().toISOString()
     };
-    if(id){books=books.map(b=>b.id===id?record:b);}
-    else{books.push(record);}
-    if(!persist())return;
-    resetForm();renderDashboard();showView('catalog');toast(id?'Ficha actualizada correctamente.':'Ejemplar registrado correctamente.');
+
+    setBusy(true);
+    let result;
+    if (id) {
+      result = await supabaseClient.from('books').update(record).eq('id', id);
+    } else {
+      result = await supabaseClient.from('books').insert(record);
+    }
+    setBusy(false);
+
+    if (result.error) {
+      console.error('Supabase SAVE:', result.error);
+      toast('No se pudo guardar: ' + result.error.message);
+      return;
+    }
+
+    resetForm();
+    await fetchBooks(false);
+    showView('catalog');
+    toast(id ? 'Ficha actualizada correctamente.' : 'Ejemplar registrado correctamente.');
   });
-  $('closeModal').addEventListener('click',closeDelete);
-  $('cancelDelete').addEventListener('click',closeDelete);
-  $('confirmModal').addEventListener('click',e=>{if(e.target===$('confirmModal'))closeDelete();});
-  $('confirmDelete').addEventListener('click',()=>{
-    if(!pendingDelete)return;
-    books=books.filter(b=>b.id!==pendingDelete);
-    if(persist()){closeDelete();renderCatalog();renderDashboard();toast('Registro retirado del catálogo.');}
+
+  $('closeModal').addEventListener('click', closeDelete);
+  $('cancelDelete').addEventListener('click', closeDelete);
+  $('confirmModal').addEventListener('click', e => {
+    if (e.target === $('confirmModal')) closeDelete();
   });
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDelete();});
-  renderDashboard();renderCatalog();
+
+  $('confirmDelete').addEventListener('click', async () => {
+    if (!pendingDelete) return;
+    const id = pendingDelete;
+    $('confirmDelete').disabled = true;
+    const { error } = await supabaseClient.from('books').delete().eq('id', id);
+    $('confirmDelete').disabled = false;
+
+    if (error) {
+      console.error('Supabase DELETE:', error);
+      toast('No se pudo retirar el registro: ' + error.message);
+      return;
+    }
+    closeDelete();
+    await fetchBooks(false);
+    toast('Registro retirado del catálogo.');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDelete();
+  });
+
+  // Sincroniza cambios de otros visitantes en tiempo real.
+  channel = supabaseClient.channel('biblioteca-books-live')
+    .on('postgres_changes', {event:'*', schema:'public', table:'books'}, () => fetchBooks(false))
+    .subscribe();
+
+  fetchBooks();
 })();
 </script>
 </body>
