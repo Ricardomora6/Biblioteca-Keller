@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101820">
+<title>Biblioteca Ricardo Mora | Gestión bibliotecaria</title>
+<style>
+:root{
+  --bg:#f4f5f7;--surface:#fff;--ink:#17212b;--muted:#74808d;
+  --navy:#101c29;--navy2:#1b2b3a;--gold:#c9a45c;--gold2:#e4ca91;
+  --line:#e6e9ed;--green:#23845b;--red:#c34b4b;--shadow:0 12px 35px rgba(21,34,48,.07);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.shell{min-height:100vh;display:grid;grid-template-columns:260px 1fr}
+.sidebar{background:linear-gradient(180deg,var(--navy),#172737);color:#fff;padding:27px 18px;display:flex;flex-direction:column;gap:28px}
+.brand{display:flex;align-items:center;gap:12px;padding:0 8px}
+.brand-mark{width:44px;height:44px;border:1px solid rgba(228,202,145,.55);border-radius:13px;display:grid;place-items:center;color:var(--gold2);font-size:23px}
+.brand-name{font-family:Georgia,serif;letter-spacing:1.5px;font-size:16px;font-weight:700}
+.brand-sub{font-size:9px;letter-spacing:2px;color:#aeb8c3;margin-top:4px}
+.nav-label{font-size:10px;letter-spacing:1.8px;color:#8190a0;padding:0 12px;margin:4px 0 8px}
+.nav{display:grid;gap:6px}
+.nav button{border:0;background:transparent;color:#c4ccd5;text-align:left;padding:12px 13px;border-radius:11px;display:flex;gap:12px;align-items:center;font-size:13px;transition:.2s}
+.nav button:hover,.nav button.active{background:rgba(255,255,255,.09);color:#fff}
+.nav button.active{box-shadow:inset 3px 0 var(--gold)}
+.nav-icon{width:19px;text-align:center;color:var(--gold2);font-size:16px}
+.side-note{margin-top:auto;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:15px;color:#aeb8c3;font-size:11px;line-height:1.6}
+.side-note strong{display:block;color:var(--gold2);font-size:12px;margin-bottom:5px}
+.main{min-width:0}
+.topbar{height:76px;background:rgba(255,255,255,.88);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 38px;position:sticky;top:0;z-index:5;backdrop-filter:blur(12px)}
+.crumb{font-size:12px;color:var(--muted)}.crumb strong{color:var(--ink);font-weight:650}
+.profile{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:650}
+.avatar{width:34px;height:34px;border-radius:50%;background:#f0e5cf;color:#765b2c;display:grid;place-items:center;font-family:Georgia,serif;font-weight:bold}
+.content{max-width:1400px;margin:auto;padding:34px 38px 55px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:25px}
+.eyebrow{font-size:10px;letter-spacing:2px;color:#9b7b3e;font-weight:750;text-transform:uppercase;margin-bottom:8px}
+h1{font-family:Georgia,serif;font-weight:500;font-size:clamp(27px,3vw,36px);margin:0;letter-spacing:-.7px}
+.subtitle{color:var(--muted);font-size:13px;margin:9px 0 0}
+.btn{border:0;border-radius:11px;padding:11px 16px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.2s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.btn-primary{background:var(--navy);color:#fff;box-shadow:0 5px 13px #101c2920}
+.btn-gold{background:var(--gold);color:#1c2430}
+.btn-light{background:#f0f2f4;color:#36414c}
+.btn-danger{background:#fff0f0;color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:23px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:19px 20px;box-shadow:0 4px 15px rgba(21,34,48,.025)}
+.stat-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:11px}
+.stat-icon{width:34px;height:34px;border-radius:10px;background:#f5efdf;color:#9a793e;display:grid;place-items:center;font-size:16px}
+.stat-num{font-family:Georgia,serif;font-size:30px;margin-top:12px}
+.stat-foot{font-size:10px;color:#8b96a1;margin-top:3px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel-head{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:15px}
+.panel-title{font-family:Georgia,serif;font-size:19px}
+.panel-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.toolbar{padding:17px 22px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:210px}
+.search-wrap span{position:absolute;left:13px;top:10px;color:#8c98a4}
+.search-wrap input{padding-left:37px;width:100%}
+input,select,textarea{border:1px solid #dfe4e9;border-radius:10px;background:#fff;color:var(--ink);padding:10px 12px;font-size:12px;outline:none;width:100%;transition:.2s}
+input:focus,select:focus,textarea:focus{border-color:#c4a15e;box-shadow:0 0 0 3px #c9a45c22}
+.filter{width:auto;min-width:145px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:760px}
+th{text-align:left;padding:12px 17px;background:#fafbfc;color:#89939e;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;font-weight:750}
+td{padding:14px 17px;border-top:1px solid #eef0f2;font-size:12px;vertical-align:middle}
+tbody tr:hover{background:#fcfcfb}
+.book-title{font-weight:700;font-size:12px;color:#202b36}
+.book-author{color:#89939e;font-size:10px;margin-top:4px}
+.isbn{font-size:10px;color:#77828d}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:30px;font-size:10px;font-weight:700;white-space:nowrap}
+.available{background:#e9f6ef;color:#258052}.loaned{background:#fff4df;color:#a87520}.unavailable{background:#fceeee;color:#b64c4c}
+.actions{display:flex;gap:6px}
+.icon-btn{width:29px;height:29px;border:1px solid var(--line);background:#fff;border-radius:8px;color:#65717d;display:grid;place-items:center;font-size:13px}
+.icon-btn:hover{border-color:var(--gold);color:#8a6b34}
+.icon-btn.delete:hover{border-color:#e9b7b7;color:var(--red);background:#fff7f7}
+.empty{padding:45px 20px;text-align:center;color:var(--muted);font-size:12px}
+.empty .big{font-size:30px;margin-bottom:9px}
+.footer{padding:19px 22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:#929ba5;font-size:10px}
+.view{display:none}.view.active{display:block}
+.form-panel{max-width:850px}
+.form-grid{padding:22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.field label{display:block;font-size:11px;font-weight:700;margin-bottom:7px;color:#4d5965}
+.field small{display:block;color:#9aa3ac;font-size:10px;margin-top:5px}
+.field.full{grid-column:1/-1}
+.form-actions{border-top:1px solid var(--line);padding:17px 22px;display:flex;justify-content:flex-end;gap:9px}
+.notice{padding:12px 15px;background:#f8f4e9;border:1px solid #eee2c5;border-radius:11px;color:#806a3d;font-size:11px;line-height:1.5;margin-bottom:18px}
+.modal-backdrop{position:fixed;inset:0;background:#0c1723a8;display:none;align-items:center;justify-content:center;padding:18px;z-index:20}
+.modal-backdrop.open{display:flex}
+.modal{background:#fff;border-radius:18px;width:min(520px,100%);box-shadow:0 25px 70px #0003;overflow:hidden}
+.modal-head{padding:19px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.modal-head h2{font-family:Georgia,serif;font-weight:500;font-size:21px;margin:0}
+.modal-body{padding:20px 22px;font-size:13px;color:#596571;line-height:1.6}
+.modal-actions{padding:0 22px 20px;display:flex;justify-content:flex-end;gap:9px}
+.toast{position:fixed;right:22px;bottom:22px;background:#172737;color:#fff;padding:13px 17px;border-radius:12px;box-shadow:var(--shadow);font-size:12px;z-index:40;opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translateY(0)}
+.mobile-menu{display:none}
+@media(max-width:980px){.shell{grid-template-columns:220px 1fr}.content{padding:28px 24px}.topbar{padding:0 24px}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){
+ .shell{display:block}.sidebar{position:fixed;z-index:15;inset:0 auto 0 0;width:270px;transform:translateX(-105%);transition:.25s;box-shadow:15px 0 40px #0003}.sidebar.open{transform:translateX(0)}
+ .mobile-menu{display:inline-flex}.topbar{height:64px;padding:0 16px}.content{padding:24px 15px 40px}.page-head{align-items:flex-start;flex-direction:column}.page-head .btn{width:100%}
+ .stats{gap:9px}.stat{padding:14px}.stat-num{font-size:26px}.stat-top{font-size:10px}
+ .panel-head,.toolbar{padding:15px}.filter{flex:1}.form-grid{grid-template-columns:1fr;padding:17px}.field.full{grid-column:auto}.form-actions{padding:15px 17px}
+ .profile span{display:none}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">▤</div>
+      <div><div class="brand-name">BIBLIOTECA</div><div class="brand-sub">RICARDO MORA</div></div>
+    </div>
+    <div>
+      <div class="nav-label">MENÚ PRINCIPAL</div>
+      <nav class="nav">
+        <button class="active" data-view="dashboard"><span class="nav-icon">⌂</span>Resumen general</button>
+        <button data-view="catalog"><span class="nav-icon">▤</span>Catálogo bibliográfico</button>
+        <button data-view="form"><span class="nav-icon">＋</span>Nuevo ejemplar</button>
+      </nav>
+    </div>
+    <div>
+      <div class="nav-label">ADMINISTRACIÓN</div>
+      <nav class="nav">
+        <button data-view="catalog"><span class="nav-icon">⌕</span>Consulta de catálogo</button>
+      </nav>
+    </div>
+    <div class="side-note"><strong>ESPACIO DE LECTURA</strong>Organiza tu colección, consulta ejemplares y mantén tu inventario actualizado.</div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn btn-light mobile-menu" id="menuBtn" aria-label="Abrir menú">☰</button>
+        <div class="crumb">Biblioteca <span style="padding:0 7px;color:#c3c9cf">/</span><strong id="crumb">Resumen general</strong></div>
+      </div>
+      <div class="profile"><div class="avatar">RM</div><span>Administrador</span></div>
+    </header>
+
+    <div class="content">
+      <section class="view active" id="dashboard">
+        <div class="page-head">
+          <div><div class="eyebrow">SISTEMA DE GESTIÓN BIBLIOTECARIA</div><h1>Resumen general</h1><p class="subtitle">Bienvenido a tu espacio de administración bibliográfica.</p></div>
+          <button class="btn btn-primary" data-go="form">＋ Registrar un libro</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="stat-top">Libros registrados <span class="stat-icon">▤</span></div><div class="stat-num" id="statTotal">0</div><div class="stat-foot">Ejemplares en el catálogo</div></div>
+          <div class="stat"><div class="stat-top">Disponibles <span class="stat-icon">✓</span></div><div class="stat-num" id="statAvailable">0</div><div class="stat-foot">Listos para consulta</div></div>
+          <div class="stat"><div class="stat-top">En préstamo <span class="stat-icon">↗</span></div><div class="stat-num" id="statLoaned">0</div><div class="stat-foot">Actualmente prestados</div></div>
+          <div class="stat"><div class="stat-top">Categorías <span class="stat-icon">▦</span></div><div class="stat-num" id="statCategories">0</div><div class="stat-foot">Áreas de conocimiento</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Actividad del catálogo</div><div class="panel-sub">Los registros más recientes de tu biblioteca</div></div><button class="btn btn-light" data-go="catalog">Ver catálogo completo →</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Libro</th><th>Autor</th><th>Categoría</th><th>Disponibilidad</th></tr></thead><tbody id="recentRows"></tbody></table></div>
+          <div class="empty" id="recentEmpty"><div class="big">▤</div>Aún no hay libros registrados. Agrega el primero para comenzar.</div>
+        </div>
+      </section>
+
+      <section class="view" id="catalog">
+        <div class="page-head">
+          <div><div class="eyebrow">COLECCIÓN BIBLIOGRÁFICA</div><h1>Catálogo de libros</h1><p class="subtitle">Consulta y administra todos los ejemplares registrados.</p></div>
+          <button class="btn btn-primary" data-go="form">＋ Nuevo ejemplar</button>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><div class="panel-title">Inventario completo</div><div class="panel-sub" id="catalogCount">0 registros encontrados</div></div></div>
+          <div class="toolbar">
+            <div class="search-wrap"><span>⌕</span><input id="searchInput" type="search" placeholder="Buscar por título, autor, ISBN..."></div>
+            <select class="filter" id="categoryFilter"><option value="">Todas las categorías</option></select>
+            <select class="filter" id="statusFilter"><option value="">Todos los estados</option><option>Disponible</option><option>En préstamo</option><option>No disponible</option></select>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Libro / ISBN</th><th>Autor</th><th>Categoría</th><th>Año</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="catalogRows"></tbody></table></div>
+          <div class="empty" id="catalogEmpty" style="display:none"><div class="big">⌕</div>No se encontraron libros con esos criterios.</div>
+          <div class="footer"><span id="resultLabel">Mostrando 0 registros</span><span>Biblioteca Ricardo Mora</span></div>
+        </div>
+      </section>
+
+      <section class="view" id="form">
+        <div class="page-head"><div><div class="eyebrow">GESTIÓN DE COLECCIÓN</div><h1 id="formTitle">Registrar nuevo ejemplar</h1><p class="subtitle">Completa la ficha bibliográfica para incorporarla al catálogo.</p></div></div>
+        <div class="notice">Los campos marcados con * son obligatorios. La información se guardará en este navegador.</div>
+        <div class="panel form-panel">
+          <div class="panel-head"><div><div class="panel-title">Ficha bibliográfica</div><div class="panel-sub">Información general del libro</div></div></div>
+          <form id="bookForm">
+            <input type="hidden" id="bookId">
+            <div class="form-grid">
+              <div class="field full"><label for="title">Título del libro *</label><input id="title" required maxlength="120" placeholder="Ej. Cien años de soledad"></div>
+              <div class="field"><label for="author">Autor *</label><input id="author" required maxlength="100" placeholder="Nombre del autor"></div>
+              <div class="field"><label for="isbn">ISBN</label><input id="isbn" maxlength="30" placeholder="Código ISBN (opcional)"></div>
+              <div class="field"><label for="category">Categoría *</label><input id="category" required maxlength="60" list="categorySuggestions" placeholder="Ej. Literatura"><datalist id="categorySuggestions"><option>Literatura</option><option>Ciencia</option><option>Historia</option><option>Tecnología</option><option>Educación</option><option>Filosofía</option><option>Arte</option></datalist></div>
+              <div class="field"><label for="year">Año de publicación</label><input id="year" type="number" min="0" max="2100" placeholder="Ej. 1967"></div>
+              <div class="field"><label for="publisher">Editorial</label><input id="publisher" maxlength="80" placeholder="Nombre de la editorial"></div>
+              <div class="field"><label for="status">Disponibilidad *</label><select id="status" required><option>Disponible</option><option>En préstamo</option><option>No disponible</option></select></div>
+              <div class="field full"><label for="description">Descripción / observaciones</label><textarea id="description" rows="3" maxlength="500" placeholder="Notas adicionales sobre el ejemplar..."></textarea></div>
+            </div>
+            <div class="form-actions"><button type="button" class="btn btn-light" data-go="catalog">Cancelar</button><button type="submit" class="btn btn-primary" id="saveBtn">Guardar ejemplar</button></div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal"><div class="modal-head"><h2 id="modalTitle">Retirar registro</h2><button class="icon-btn" id="closeModal" aria-label="Cerrar">×</button></div><div class="modal-body" id="modalText">¿Deseas retirar este registro del catálogo? Esta acción no se puede deshacer.</div><div class="modal-actions"><button class="btn btn-light" id="cancelDelete">Conservar registro</button><button class="btn btn-danger" id="confirmDelete">Retirar registro</button></div></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  const STORAGE_KEY = 'bibliotecaRicardoMora_v1';
+  const $ = id => document.getElementById(id);
+  let books = loadBooks();
+  let pendingDelete = null;
+
+  function loadBooks(){
+    try{
+      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return Array.isArray(value) ? value : [];
+    }catch(e){ return []; }
+  }
+  function persist(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+      return true;
+    }catch(e){
+      toast('No se pudo guardar. Revisa el espacio disponible del navegador.');
+      return false;
+    }
+  }
+  function safe(value){
+    return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function statusClass(status){
+    return status === 'Disponible' ? 'available' : status === 'En préstamo' ? 'loaned' : 'unavailable';
+  }
+  function statusPill(status){ return `<span class="pill ${statusClass(status)}">${safe(status)}</span>`; }
+  function toast(message){
+    const el=$('toast');el.textContent=message;el.classList.add('show');
+    clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2800);
+  }
+  function showView(name){
+    document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===name));
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===name && (name!=='form'||b.dataset.view==='form')));
+    const labels={dashboard:'Resumen general',catalog:'Catálogo bibliográfico',form:'Nuevo ejemplar'};
+    $('crumb').textContent=labels[name]||'Biblioteca';
+    $('sidebar').classList.remove('open');
+    if(name==='catalog') renderCatalog();
+    if(name==='dashboard') renderDashboard();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function renderDashboard(){
+    $('statTotal').textContent=books.length;
+    $('statAvailable').textContent=books.filter(b=>b.status==='Disponible').length;
+    $('statLoaned').textContent=books.filter(b=>b.status==='En préstamo').length;
+    $('statCategories').textContent=new Set(books.map(b=>b.category.trim().toLowerCase()).filter(Boolean)).size;
+    const recent=[...books].sort((a,b)=>b.createdAt-a.createdAt).slice(0,5);
+    $('recentRows').innerHTML=recent.map(b=>`<tr><td><div class="book-title">${safe(b.title)}</div><div class="book-author">${safe(b.isbn||'Sin ISBN')}</div></td><td>${safe(b.author)}</td><td>${safe(b.category)}</td><td>${statusPill(b.status)}</td></tr>`).join('');
+    $('recentEmpty').style.display=recent.length?'none':'block';
+  }
+  function renderCatalog(){
+    const q=$('searchInput').value.trim().toLocaleLowerCase('es');
+    const cat=$('categoryFilter').value, status=$('statusFilter').value;
+    const filtered=books.filter(b=>{
+      const hay=[b.title,b.author,b.isbn,b.category,b.publisher,b.year,b.description].join(' ').toLocaleLowerCase('es');
+      return (!q||hay.includes(q))&&(!cat||b.category===cat)&&(!status||b.status===status);
+    }).sort((a,b)=>a.title.localeCompare(b.title,'es'));
+    $('catalogRows').innerHTML=filtered.map(b=>`
+      <tr>
+        <td><div class="book-title">${safe(b.title)}</div><div class="isbn">${safe(b.isbn||'ISBN no registrado')}</div></td>
+        <td>${safe(b.author)}</td><td>${safe(b.category)}</td><td>${safe(b.year||'—')}</td><td>${statusPill(b.status)}</td>
+        <td><div class="actions"><button class="icon-btn" data-action="edit" data-id="${safe(b.id)}" title="Actualizar ficha" aria-label="Actualizar ficha">✎</button><button class="icon-btn delete" data-action="delete" data-id="${safe(b.id)}" title="Retirar registro" aria-label="Retirar registro">⌫</button></div></td>
+      </tr>`).join('');
+    $('catalogEmpty').style.display=filtered.length?'none':'block';
+    $('catalogCount').textContent=`${filtered.length} ${filtered.length===1?'registro encontrado':'registros encontrados'}`;
+    $('resultLabel').textContent=`Mostrando ${filtered.length} de ${books.length} registros`;
+    const categories=[...new Set(books.map(b=>b.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+    const current=$('categoryFilter').value;
+    $('categoryFilter').innerHTML='<option value="">Todas las categorías</option>'+categories.map(c=>`<option value="${safe(c)}">${safe(c)}</option>`).join('');
+    $('categoryFilter').value=categories.includes(current)?current:'';
+  }
+  function resetForm(){
+    $('bookForm').reset();$('bookId').value='';$('formTitle').textContent='Registrar nuevo ejemplar';$('saveBtn').textContent='Guardar ejemplar';
+  }
+  function editBook(id){
+    const b=books.find(x=>x.id===id);if(!b)return;
+    $('bookId').value=b.id;$('title').value=b.title;$('author').value=b.author;$('isbn').value=b.isbn||'';
+    $('category').value=b.category;$('year').value=b.year||'';$('publisher').value=b.publisher||'';
+    $('status').value=b.status;$('description').value=b.description||'';
+    $('formTitle').textContent='Actualizar ficha bibliográfica';$('saveBtn').textContent='Guardar cambios';
+    showView('form');
+  }
+  function openDelete(id){
+    const b=books.find(x=>x.id===id);if(!b)return;
+    pendingDelete=id;$('modalText').textContent=`¿Deseas retirar “${b.title}” del catálogo? Esta acción no se puede deshacer.`;
+    $('confirmModal').classList.add('open');
+  }
+  function closeDelete(){pendingDelete=null;$('confirmModal').classList.remove('open');}
+  document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>showView(btn.dataset.view)));
+  document.querySelectorAll('[data-go]').forEach(btn=>btn.addEventListener('click',()=>{
+    if(btn.dataset.go==='form')resetForm();showView(btn.dataset.go);
+  }));
+  $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
+  $('searchInput').addEventListener('input',renderCatalog);
+  $('categoryFilter').addEventListener('change',renderCatalog);
+  $('statusFilter').addEventListener('change',renderCatalog);
+  $('catalogRows').addEventListener('click',e=>{
+    const btn=e.target.closest('button[data-action]');if(!btn)return;
+    if(btn.dataset.action==='edit')editBook(btn.dataset.id);
+    if(btn.dataset.action==='delete')openDelete(btn.dataset.id);
+  });
+  $('bookForm').addEventListener('submit',e=>{
+    e.preventDefault();
+    const id=$('bookId').value;
+    const title=$('title').value.trim(),author=$('author').value.trim(),category=$('category').value.trim();
+    if(!title||!author||!category){toast('Completa los campos obligatorios.');return;}
+    const year=$('year').value.trim();
+    if(year && (+year<0||+year>2100)){toast('Ingresa un año válido.');return;}
+    const record={
+      id:id||('book_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
+      title,author,isbn:$('isbn').value.trim(),category,year,publisher:$('publisher').value.trim(),
+      status:$('status').value,description:$('description').value.trim(),
+      createdAt:id?(books.find(b=>b.id===id)?.createdAt||Date.now()):Date.now(),
+      updatedAt:Date.now()
+    };
+    if(id){books=books.map(b=>b.id===id?record:b);}
+    else{books.push(record);}
+    if(!persist())return;
+    resetForm();renderDashboard();showView('catalog');toast(id?'Ficha actualizada correctamente.':'Ejemplar registrado correctamente.');
+  });
+  $('closeModal').addEventListener('click',closeDelete);
+  $('cancelDelete').addEventListener('click',closeDelete);
+  $('confirmModal').addEventListener('click',e=>{if(e.target===$('confirmModal'))closeDelete();});
+  $('confirmDelete').addEventListener('click',()=>{
+    if(!pendingDelete)return;
+    books=books.filter(b=>b.id!==pendingDelete);
+    if(persist()){closeDelete();renderCatalog();renderDashboard();toast('Registro retirado del catálogo.');}
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDelete();});
+  renderDashboard();renderCatalog();
+})();
+</script>
+</body>
+</html>
